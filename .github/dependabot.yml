@@ -1,0 +1,20 @@
+# Dependabot базы сборки: здесь обновляется ОБЩЕЕ для всех проектов — версии в
+# gradle/libs.versions.toml (Spring Boot, Spring AI, Sentry, плагин dependency-management),
+# Gradle wrapper и actions общих workflow. Влили → новый тег vX.Y.Z → проекты получают его
+# своим dependabot одной цифрой. gradle/actions не используем: с v6 его кэш — проприетарный компонент.
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: "/"
+    schedule: { interval: weekly }
+    groups:
+      platform:
+        patterns: [ "*" ]
+        update-types: [ minor, patch ]
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly }
+    groups:
+      actions:
+        patterns: [ "*" ]
+        update-types: [ minor, patch ]
