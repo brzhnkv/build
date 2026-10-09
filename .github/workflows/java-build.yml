@@ -1,0 +1,124 @@
+# Сборка Java-проекта на базе brzhnkv/build: тесты (./gradlew build) и, если задан image, образ в ghcr
+# с неизменяемым тегом-sha (никаких :latest). Подключение из проекта:
+#
+#   jobs:
+#     build:
+#       uses: brzhnkv/build/.github/workflows/java-build.yml@v1.0.0
+#       with: { image: ghcr.io/brzhnkv/notify }
+#
+# У вызывающего workflow должно быть permissions: packages: write (для образа).
+name: Java — сборка
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Каталог Gradle-проекта (с gradlew) относительно корня репозитория
+        type: string
+        default: '.'
+      node-version:
+        description: Поставить Node.js этой версии (для pre-build, например сборки страницы)
+        type: string
+        default: ''
+      pre-build:
+        description: Команда ДО сборки, из корня репозитория (например, cd web && npm ci && npm run build)
+        type: string
+        default: ''
+      post-check:
+        description: Проверка ПОСЛЕ сборки, из working-directory (например, ./tools/web-coverage.sh)
+        type: string
+        default: ''
+      image:
+        description: Образ без тега (ghcr.io/brzhnkv/<имя>); пусто — только тесты
+        type: string
+        default: ''
+      dockerfile:
+        description: Свой Dockerfile (путь от корня репозитория); пусто — общий образ сервиса ниже
+        type: string
+        default: ''
+      push:
+        description: Собрать и выложить образ (на PR обычно false)
+        type: boolean
+        default: true
+
+env:
+  # Держать равной версии java в gradle/libs.versions.toml (сверяет ci.yml базы).
+  JAVA_VERSION: '25'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+          cache-dependency-path: |
+            ${{ inputs.working-directory }}/**/*.gradle*
+            ${{ inputs.working-directory }}/**/gradle-wrapper.properties
+
+      - if: inputs.node-version != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: До сборки
+        if: inputs.pre-build != ''
+        run: ${{ inputs.pre-build }}
+
+      - name: Тесты и сборка
+        working-directory: ${{ inputs.working-directory }}
+        run: ./gradlew --no-daemon clean build
+
+      - name: Проверка после сборки
+        if: inputs.post-check != ''
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.post-check }}
+
+      # Общий образ сервиса: исполняемый jar (плагин dev.brzhnkv.service отключает «plain»), свой
+      # пользователь, healthcheck по actuator на MANAGEMENT_PORT (или SERVER_PORT) из compose.
+      - name: Общий Dockerfile
+        if: inputs.image != '' && inputs.push && inputs.dockerfile == ''
+        run: |
+          cat > "$RUNNER_TEMP/Dockerfile" <<'DOCKERFILE'
+          ARG JAVA
+          FROM eclipse-temurin:${JAVA}-jre-alpine
+          ENV TZ=UTC \
+              JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+UseStringDeduplication"
+          WORKDIR /opt/app
+          RUN apk add --no-cache wget \
+              && addgroup -S app && adduser -S -u 10001 -G app app
+          COPY build/libs/*.jar /opt/app/app.jar
+          USER app
+          HEALTHCHECK --interval=10s --timeout=5s --start-period=25s --retries=6 \
+              CMD sh -c 'wget -qO- "http://localhost:${MANAGEMENT_PORT:-${SERVER_PORT:-8080}}/actuator/health" > /dev/null || exit 1'
+          ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /opt/app/app.jar"]
+          DOCKERFILE
+          echo "DOCKERFILE_PATH=$RUNNER_TEMP/Dockerfile" >> "$GITHUB_ENV"
+
+      - name: Свой Dockerfile
+        if: inputs.image != '' && inputs.push && inputs.dockerfile != ''
+        run: echo "DOCKERFILE_PATH=${{ inputs.dockerfile }}" >> "$GITHUB_ENV"
+
+      - if: inputs.image != '' && inputs.push
+        uses: docker/setup-buildx-action@v3
+      - if: inputs.image != '' && inputs.push
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Образ
+        if: inputs.image != '' && inputs.push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.working-directory }}
+          file: ${{ env.DOCKERFILE_PATH }}
+          push: true
+          tags: ${{ inputs.image }}:${{ github.sha }}
+          build-args: JAVA=${{ env.JAVA_VERSION }}
+          cache-from: type=gha,scope=${{ inputs.image }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.image }}

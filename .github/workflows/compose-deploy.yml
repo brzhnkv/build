@@ -1,0 +1,99 @@
+# Деплой сервиса на VPS через docker compose: compose-файл → сервер, .env с образом и тегом-sha,
+# pull + up, ожидание healthy, проверка «код не старее схемы БД» (Flyway). Секреты сервиса сюда не
+# ходят: их раскладывает реестр infra/platform (SOPS) в /opt/platform-secrets/<имя>.env (env_file).
+#
+# Compose-файл проекта берёт образ так: image: ${IMAGE}:${IMAGE_TAG:?…}
+#
+#   deploy:
+#     needs: build
+#     uses: brzhnkv/build/.github/workflows/compose-deploy.yml@v1.0.0
+#     with: { image: ghcr.io/brzhnkv/notify, service: notify, server-dir: /opt/notify }
+#     secrets: inherit
+name: Compose — деплой
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: Образ без тега (тег — sha коммита, его собрал java-build)
+        type: string
+        required: true
+      service:
+        description: Сервис в compose-файле; его имя контейнера — container_name
+        type: string
+        required: true
+      container:
+        description: Имя контейнера, если отличается от service
+        type: string
+        default: ''
+      server-dir:
+        description: Каталог проекта на сервере (/opt/<имя>)
+        type: string
+        required: true
+      compose-file:
+        type: string
+        default: docker-compose.prod.yml
+    secrets:
+      VPS_HOST:
+        required: true
+      VPS_USER:
+        required: true
+      VPS_SSH_KEY:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compose-файл на сервер
+        uses: burnett01/rsync-deployments@6.0.0
+        with:
+          switches: -avz
+          path: ${{ inputs.compose-file }}
+          remote_path: ${{ inputs.server-dir }}/
+          remote_host: ${{ secrets.VPS_HOST }}
+          remote_user: ${{ secrets.VPS_USER }}
+          remote_key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Деплой
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          IMAGE: ${{ inputs.image }}
+          TAG: ${{ github.sha }}
+          SERVICE: ${{ inputs.service }}
+          CONTAINER: ${{ inputs.container || inputs.service }}
+          DIR: ${{ inputs.server-dir }}
+          COMPOSE: ${{ inputs.compose-file }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: IMAGE,TAG,SERVICE,CONTAINER,DIR,COMPOSE
+          script: |
+            set -euo pipefail
+            cd "$DIR"
+
+            # .env — только образ и его тег (секреты — env_file из реестра платформы).
+            printf 'IMAGE=%s\nIMAGE_TAG=%s\n' "$IMAGE" "$TAG" > .env
+            chmod 600 .env
+
+            docker compose -f "$COMPOSE" pull "$SERVICE"
+            docker compose -f "$COMPOSE" up -d --remove-orphans
+
+            echo "Ожидаю готовности $CONTAINER…"
+            for i in $(seq 1 45); do
+              status=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER" 2>/dev/null || echo starting)
+              if [ "$status" = "healthy" ]; then echo "✓ healthy ($i)"; break; fi
+              echo "  $i: $status"; sleep 3
+            done
+            [ "$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER")" = "healthy" ] \
+              || { echo "✗ health-check не прошёл"; docker logs --tail 60 "$CONTAINER"; exit 1; }
+
+            # Код не должен быть старее схемы БД (Flyway) — ловим и валим деплой.
+            if docker logs "$CONTAINER" 2>&1 | grep -q 'newer than the latest available migration'; then
+              echo "✗ сервис старее схемы БД"; exit 1
+            fi
+            echo "✓ deploy complete"
+            docker image prune -af --filter "until=168h" 2>/dev/null || true

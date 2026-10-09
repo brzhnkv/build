@@ -1,0 +1,27 @@
+# Проверка базы на каждом push/PR: плагины и BOM собираются и публикуются (в build/repo), версия
+# Java в общих workflow совпадает с каталогом gradle/libs.versions.toml.
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+      - name: Сборка и публикация в build/repo
+        run: ./gradlew --no-daemon build publish
+      - name: Java в workflow = Java в каталоге
+        run: |
+          JAVA=$(sed -n 's/^java = "\([0-9]*\)"/\1/p' gradle/libs.versions.toml)
+          bad=$(grep -rhoE "java-version: '?[0-9]+'?|JAVA_VERSION: '?[0-9]+'?" .github/workflows | grep -vE "[^0-9]$JAVA'?$" || true)
+          [ -z "$bad" ] || { echo "::error::Версия Java в workflow расходится с каталогом ($JAVA): $bad"; exit 1; }
+          echo "Java $JAVA — везде одинаково"

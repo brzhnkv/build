@@ -1,0 +1,27 @@
+// BOM dev.brzhnkv:platform — версии для проектов: весь Spring Boot + общие библиотеки из каталога.
+// Проект пишет зависимость без версии (implementation 'io.sentry:sentry'), версию даёт этот BOM.
+plugins {
+    id 'java-platform'
+    id 'maven-publish'
+}
+
+javaPlatform {
+    allowDependencies()
+}
+
+dependencies {
+    api platform(libs.spring.boot.dependencies)
+    api platform(libs.spring.ai.bom)
+    constraints {
+        api libs.sentry
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifactId = 'platform'
+            from components.javaPlatform
+        }
+    }
+}

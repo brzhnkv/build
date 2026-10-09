@@ -1,0 +1,29 @@
+// Расширение Keycloak: компилируется под Java, на которой работает сам Keycloak (26.x — 21), хотя
+// собирается JDK проекта (25). jar воспроизводимый: деплой перезапускает Keycloak, когда меняется
+// сумма keycloak-providers/*.jar, — без этого каждая сборка давала бы лишний перезапуск входа.
+// Зависимости Keycloak — compileOnly в проекте: сервер даёт их сам, в jar они попадать не должны.
+import dev.brzhnkv.build.BuildPlatform
+
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(BuildPlatform.JAVA as int)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = BuildPlatform.KEYCLOAK_JAVA as int
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}

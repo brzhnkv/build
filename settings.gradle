@@ -1,0 +1,11 @@
+// База сборки наших проектов: BOM версий (platform) и Gradle-плагины (plugins).
+// Версии — gradle/libs.versions.toml (Gradle подхватывает его как каталог libs сам).
+rootProject.name = 'build'
+include 'platform', 'plugins'
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}

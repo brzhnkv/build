@@ -1,0 +1,26 @@
+// Версия базы — из тега при выпуске (release.yml: -Pversion=1.2.3); локально — 0.0.0-local.
+// Плагины и BOM всегда одной версии: проект указывает одну цифру.
+allprojects {
+    group = 'dev.brzhnkv'
+    if (version == 'unspecified') version = '0.0.0-local'
+}
+
+subprojects {
+    // Публикация — в каталог, который release.yml выкладывает на GitHub Pages
+    // (https://brzhnkv.github.io/build/maven). -PpublishDir=… указывает на checkout ветки gh-pages:
+    // maven-publish сам дописывает новую версию в maven-metadata.xml, старые остаются.
+    pluginManager.withPlugin('maven-publish') {
+        publishing {
+            repositories {
+                maven {
+                    name = 'pages'
+                    url = file(findProperty('publishDir') ?: rootProject.layout.buildDirectory.dir('repo').get().asFile)
+                }
+            }
+        }
+    }
+    tasks.withType(AbstractArchiveTask).configureEach {
+        preserveFileTimestamps = false
+        reproducibleFileOrder = true
+    }
+}

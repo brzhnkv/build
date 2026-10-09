@@ -1,0 +1,32 @@
+// Gradle-плагины проектов (precompiled script plugins в src/main/groovy):
+//   dev.brzhnkv.service            — Spring Boot сервис;
+//   dev.brzhnkv.keycloak-extension — расширение Keycloak (jar в keycloak-providers/).
+plugins {
+    id 'groovy-gradle-plugin'
+    id 'maven-publish'
+}
+
+dependencies {
+    implementation libs.spring.boot.gradle.plugin
+    implementation libs.dependency.management.plugin
+}
+
+// Версии, которые плагины применяют в проекте, — из того же каталога, зашиваются в константы при
+// сборке: версия базы (= версия BOM dev.brzhnkv:platform), Java, Java для Keycloak.
+def generated = layout.buildDirectory.dir('generated/sources/platform')
+def constants = tasks.register('platformConstants') {
+    def values = [
+        VERSION     : project.version.toString(),
+        JAVA        : libs.versions.java.get(),
+        KEYCLOAK_JAVA: libs.versions.keycloak.java.get(),
+    ]
+    inputs.properties(values)
+    outputs.dir(generated)
+    doLast {
+        def file = generated.get().file('dev/brzhnkv/build/BuildPlatform.groovy').asFile
+        file.parentFile.mkdirs()
+        file.text = "package dev.brzhnkv.build\n\n/** Сгенерировано при сборке базы — не править. */\nclass BuildPlatform {\n" +
+                values.collect { k, v -> "    static final String ${k} = '${v}'" }.join('\n') + "\n}\n"
+    }
+}
+sourceSets.main.groovy.srcDir(constants)

@@ -1,0 +1,48 @@
+# Выпуск базы: тег vX.Y.Z → плагины и BOM версии X.Y.Z в ветку gh-pages (каталог maven/),
+# GitHub Pages раздаёт их как Maven-репозиторий https://brzhnkv.github.io/build/maven — без токенов.
+# Выпущенную версию не переписываем: исправление — новый тег.
+name: Выпуск
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: pages
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: gradle
+
+      - name: Версия не выпущена раньше
+        run: |
+          V="${GITHUB_REF_NAME#v}"
+          if [ -d "pages/maven/dev/brzhnkv/platform/$V" ]; then
+            echo "::error::Версия $V уже выпущена — выпущенное не переписываем, нужен новый тег"; exit 1
+          fi
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+
+      - name: Публикация
+        run: ./gradlew --no-daemon publish -Pversion="$VERSION" -PpublishDir="$PWD/pages/maven"
+
+      - name: В gh-pages
+        working-directory: pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Выпуск $VERSION"
+          git push

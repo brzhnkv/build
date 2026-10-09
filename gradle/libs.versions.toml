@@ -1,0 +1,18 @@
+# ЕДИНСТВЕННОЕ место с версиями для всех проектов. Поднял здесь → новый тег → в проекте сменить
+# версию базы. Сюда попадает только общее: Java, Spring Boot и библиотеки, которыми пользуются
+# два проекта и больше. Библиотека одного проекта живёт в нём вместе с версией.
+[versions]
+java = "25"
+# Keycloak (26.x) работает на Java 21: расширения компилируются под неё, хоть и собираются JDK 25.
+keycloak-java = "21"
+spring-boot = "4.1.1"
+dependency-management = "1.1.7"
+spring-ai = "2.0.0"
+sentry = "8.59.0"
+
+[libraries]
+spring-boot-gradle-plugin = { module = "org.springframework.boot:spring-boot-gradle-plugin", version.ref = "spring-boot" }
+dependency-management-plugin = { module = "io.spring.gradle:dependency-management-plugin", version.ref = "dependency-management" }
+spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref = "spring-ai" }
+sentry = { module = "io.sentry:sentry", version.ref = "sentry" }

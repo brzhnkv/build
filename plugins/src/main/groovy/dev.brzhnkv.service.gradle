@@ -1,0 +1,53 @@
+// Spring Boot сервис. В проекте остаётся: plugins { id 'dev.brzhnkv.service' version 'X' },
+// version, свои зависимости — БЕЗ версий (их даёт BOM dev.brzhnkv:platform той же версии, что плагин).
+// Своё, отличное от общего (имя jar, окружение bootRun, lombok…) — в build.gradle проекта.
+import dev.brzhnkv.build.BuildPlatform
+
+plugins {
+    id 'java'
+    id 'org.springframework.boot'
+    id 'io.spring.dependency-management'
+}
+
+repositories {
+    mavenCentral()
+    maven { url = 'https://brzhnkv.github.io/build/maven' }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(BuildPlatform.JAVA as int)
+    }
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "dev.brzhnkv:platform:${BuildPlatform.VERSION}"
+    }
+}
+
+dependencies {
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    // Сотни тестов кэшируют несколько Spring-контекстов: дефолтных 512 МБ рабочего процесса мало.
+    maxHeapSize = '2g'
+}
+
+// В образ едет только исполняемый jar (build/libs/<имя>-<версия>.jar); «plain» без зависимостей не нужен.
+tasks.named('jar') {
+    enabled = false
+}
+
+// Воспроизводимые архивы: тот же исходник — тот же jar (без меток времени, постоянный порядок).
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
