@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Compose-файл на сервер
-        uses: burnett01/rsync-deployments@45d84ad5f6c174f3e0ffc50e9060a9666d09c16e # 6.0.0
+        uses: burnett01/rsync-deployments@155b6d6c1219ab2224c20c58d423a3f1b850395f # 9.0.1
         with:
           switches: -avz
           path: ${{ inputs.compose-file }}
