@@ -61,7 +61,9 @@ jobs:
         with:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
-          cache: gradle
+          # Свой раннер: ~/.gradle и так на диске, а облачный кэш GitHub через домашнюю сеть — минуты (2026-10-11:
+          # 169 с восстановления + 39 с сохранения на прогон). На GitHub-раннере кэш нужен.
+          cache: ${{ contains(inputs.runs-on, 'self-hosted') && '' || 'gradle' }}
           cache-dependency-path: |
             ${{ inputs.working-directory }}/**/*.gradle*
             ${{ inputs.working-directory }}/**/gradle-wrapper.properties
