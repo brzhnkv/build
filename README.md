@@ -69,6 +69,9 @@ jobs:
     secrets: inherit
 ```
 
+Свой раннер вместо GitHub: `runs-on: '["self-hosted", "orchestrator"]'` в `with:` (JSON; по умолчанию
+`"ubuntu-latest"`). Так CI Orchestrator и Golden идут на Mac mini и не тратят минуты Actions.
+
 В compose-файле проекта образ берётся так: `image: ${IMAGE}:${IMAGE_TAG:?…}`. Порт для
 healthcheck общего образа — `MANAGEMENT_PORT` (или `SERVER_PORT`) из `environment` compose.
 

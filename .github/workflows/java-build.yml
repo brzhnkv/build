@@ -40,6 +40,12 @@ on:
         description: Собрать и выложить образ (на PR обычно false)
         type: boolean
         default: true
+      runs-on:
+        description: >-
+          На чём запускать — JSON: "ubuntu-latest" (GitHub) или ["self-hosted", "orchestrator"] (свой раннер
+          на Mac mini: минуты Actions не тратятся, 2026-10-11 они кончились к середине месяца)
+        type: string
+        default: '"ubuntu-latest"'
 
 env:
   # Держать равной версии java в gradle/libs.versions.toml (сверяет ci.yml базы).
@@ -47,7 +53,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
     steps:
       - uses: actions/checkout@v4
 
