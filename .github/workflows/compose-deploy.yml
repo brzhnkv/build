@@ -5,7 +5,7 @@
 #
 #   deploy:
 #     needs: build
-#     uses: brzhnkv/build/.github/workflows/compose-deploy.yml@v1.5.0
+#     uses: brzhnkv/build/.github/workflows/compose-deploy.yml@v1.5.1
 #     with: { service: notify, runs-on: '${{ vars.DEPLOY_RUNNER || '"ubuntu-latest"' }}' }
 #     secrets: inherit
 name: Compose — деплой
@@ -57,10 +57,11 @@ jobs:
             echo "TARGET=$USER@$HOST"
           } >> "$GITHUB_ENV"
 
-      # Ключ проекта на сервере — forced command шлюза: rsync кладёт файл в его приёмный каталог (путь — `:`,
-      # не /opt/<проект>), `deploy` выкатывает. Залитый compose шлюз проверяет и применяет целиком (up --remove-orphans).
+      # Ключ проекта на сервере — forced command шлюза: `upload` кладёт compose из stdin в его приёмный каталог
+      # (не rsync: на своём раннере Mac mini он — openrsync, а rrsync понимает только GNU rsync), `deploy` выкатывает.
+      # Залитый compose шлюз проверяет и применяет целиком (up --remove-orphans).
       - name: Compose-файл на сервер
-        run: rsync -az -e "$SSH" "${{ inputs.compose-file }}" "$TARGET:"
+        run: $SSH "$TARGET" upload < "${{ inputs.compose-file }}"
 
       - name: Деплой
         run: $SSH "$TARGET" "deploy ${{ inputs.service }}=${{ github.sha }}"
