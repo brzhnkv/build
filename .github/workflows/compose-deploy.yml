@@ -33,6 +33,13 @@ on:
       compose-file:
         type: string
         default: docker-compose.prod.yml
+      runs-on:
+        description: >-
+          На чём запускать — JSON: "ubuntu-latest" (GitHub) или ["self-hosted", "orchestrator"] (свой раннер на
+          Mac mini, когда кончились минуты Actions; CODE_HOST_INDEPENDENCE_DESIGN §4.3). Проект передаёт сюда
+          переменную репозитория CI_RUNNER с запасным '"ubuntu-latest"' (JSON-строка, как у java-build)
+        type: string
+        default: '"ubuntu-latest"'
     secrets:
       VPS_HOST:
         required: true
@@ -43,22 +50,30 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(inputs.runs-on) }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      # Обычные ssh и rsync, без экшенов: rsync-deployments — docker-экшен, а на своём раннере Docker нет
+      # (CODE_HOST_INDEPENDENCE_DESIGN §4.2). Ключ — во временном файле раннера, удаляется в конце задачи.
+      - name: Ключ сервера
+        env:
+          KEY: ${{ secrets.VPS_SSH_KEY }}
+          HOST: ${{ secrets.VPS_HOST }}
+          USER: ${{ secrets.VPS_USER }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s\n' "$KEY" > "$RUNNER_TEMP/deploy_key"
+          {
+            echo "SSH=ssh -i $RUNNER_TEMP/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts -o ConnectTimeout=20"
+            echo "TARGET=$USER@$HOST"
+          } >> "$GITHUB_ENV"
+
       - name: Compose-файл на сервер
-        uses: burnett01/rsync-deployments@45d84ad5f6c174f3e0ffc50e9060a9666d09c16e # 6.0.0
-        with:
-          switches: -avz
-          path: ${{ inputs.compose-file }}
-          remote_path: ${{ inputs.server-dir }}/
-          remote_host: ${{ secrets.VPS_HOST }}
-          remote_user: ${{ secrets.VPS_USER }}
-          remote_key: ${{ secrets.VPS_SSH_KEY }}
+        run: rsync -az -e "$SSH" "${{ inputs.compose-file }}" "$TARGET:${{ inputs.server-dir }}/"
 
       - name: Деплой
-        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         env:
           IMAGE: ${{ inputs.image }}
           TAG: ${{ github.sha }}
@@ -66,34 +81,37 @@ jobs:
           CONTAINER: ${{ inputs.container || inputs.service }}
           DIR: ${{ inputs.server-dir }}
           COMPOSE: ${{ inputs.compose-file }}
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          envs: IMAGE,TAG,SERVICE,CONTAINER,DIR,COMPOSE
-          script: |
-            set -euo pipefail
-            cd "$DIR"
+        run: |
+          set -euo pipefail
+          # Значения — во входах workflow (не из PR): передаются переменными окружения удалённой оболочке.
+          $SSH "$TARGET" "IMAGE=$(printf %q "$IMAGE") TAG=$(printf %q "$TAG") SERVICE=$(printf %q "$SERVICE") CONTAINER=$(printf %q "$CONTAINER") DIR=$(printf %q "$DIR") COMPOSE=$(printf %q "$COMPOSE") bash -s" <<'SCRIPT'
+          set -euo pipefail
+          cd "$DIR"
 
-            # .env — только образ и его тег (секреты — env_file из реестра платформы).
-            printf 'IMAGE=%s\nIMAGE_TAG=%s\n' "$IMAGE" "$TAG" > .env
-            chmod 600 .env
+          # .env — только образ и его тег (секреты — env_file из реестра платформы).
+          printf 'IMAGE=%s\nIMAGE_TAG=%s\n' "$IMAGE" "$TAG" > .env
+          chmod 600 .env
 
-            docker compose -f "$COMPOSE" pull "$SERVICE"
-            docker compose -f "$COMPOSE" up -d --remove-orphans
+          docker compose -f "$COMPOSE" pull "$SERVICE"
+          docker compose -f "$COMPOSE" up -d --remove-orphans
 
-            echo "Ожидаю готовности $CONTAINER…"
-            for i in $(seq 1 45); do
-              status=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER" 2>/dev/null || echo starting)
-              if [ "$status" = "healthy" ]; then echo "✓ healthy ($i)"; break; fi
-              echo "  $i: $status"; sleep 3
-            done
-            [ "$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER")" = "healthy" ] \
-              || { echo "✗ health-check не прошёл"; docker logs --tail 60 "$CONTAINER"; exit 1; }
+          echo "Ожидаю готовности $CONTAINER…"
+          for i in $(seq 1 45); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER" 2>/dev/null || echo starting)
+            if [ "$status" = "healthy" ]; then echo "✓ healthy ($i)"; break; fi
+            echo "  $i: $status"; sleep 3
+          done
+          [ "$(docker inspect --format='{{.State.Health.Status}}' "$CONTAINER")" = "healthy" ] \
+            || { echo "✗ health-check не прошёл"; docker logs --tail 60 "$CONTAINER"; exit 1; }
 
-            # Код не должен быть старее схемы БД (Flyway) — ловим и валим деплой.
-            if docker logs "$CONTAINER" 2>&1 | grep -q 'newer than the latest available migration'; then
-              echo "✗ сервис старее схемы БД"; exit 1
-            fi
-            echo "✓ deploy complete"
-            docker image prune -af --filter "until=168h" 2>/dev/null || true
+          # Код не должен быть старее схемы БД (Flyway) — ловим и валим деплой.
+          if docker logs "$CONTAINER" 2>&1 | grep -c 'newer than the latest available migration' >/dev/null; then
+            echo "✗ сервис старее схемы БД"; exit 1
+          fi
+          echo "✓ deploy complete"
+          docker image prune -af --filter "until=168h" 2>/dev/null || true
+          SCRIPT
+
+      - name: Убрать ключ
+        if: always()
+        run: rm -f "$RUNNER_TEMP/deploy_key" "$RUNNER_TEMP/known_hosts"
