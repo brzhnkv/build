@@ -36,6 +36,21 @@ on:
         description: Свой Dockerfile (путь от корня репозитория); пусто — общий образ сервиса ниже
         type: string
         default: ''
+      builder:
+        description: >-
+          Чем собирать образ: docker (Dockerfile + buildx — нужен Docker на раннере) или jib (без Docker: и на
+          GitHub, и на своём раннере Mac mini; CODE_HOST_INDEPENDENCE_DESIGN §4.2). У jib всё, что делал RUN, —
+          в базовом образе (base-image), HEALTHCHECK — в compose проекта.
+        type: string
+        default: docker
+      base-image:
+        description: Базовый образ для jib (ghcr.io/brzhnkv/jre-base:25, :25-heif — с libheif)
+        type: string
+        default: ghcr.io/brzhnkv/jre-base:25
+      jvm-flags:
+        description: Флаги JVM для jib через запятую (например --enable-preview); память — JAVA_TOOL_OPTIONS базы
+        type: string
+        default: ''
       push:
         description: Собрать и выложить образ (на PR обычно false)
         type: boolean
@@ -98,7 +113,7 @@ jobs:
       # Общий образ сервиса: исполняемый jar (плагин dev.brzhnkv.service отключает «plain»), свой
       # пользователь, healthcheck по actuator на MANAGEMENT_PORT (или SERVER_PORT) из compose.
       - name: Общий Dockerfile
-        if: inputs.image != '' && inputs.push && inputs.dockerfile == ''
+        if: inputs.image != '' && inputs.push && inputs.builder == 'docker' && inputs.dockerfile == ''
         run: |
           cat > "$RUNNER_TEMP/Dockerfile" <<'DOCKERFILE'
           ARG JAVA
@@ -117,19 +132,19 @@ jobs:
           echo "DOCKERFILE_PATH=$RUNNER_TEMP/Dockerfile" >> "$GITHUB_ENV"
 
       - name: Свой Dockerfile
-        if: inputs.image != '' && inputs.push && inputs.dockerfile != ''
+        if: inputs.image != '' && inputs.push && inputs.builder == 'docker' && inputs.dockerfile != ''
         run: echo "DOCKERFILE_PATH=${{ inputs.dockerfile }}" >> "$GITHUB_ENV"
 
-      - if: inputs.image != '' && inputs.push
+      - if: inputs.image != '' && inputs.push && inputs.builder == 'docker'
         uses: docker/setup-buildx-action@v3
-      - if: inputs.image != '' && inputs.push
+      - if: inputs.image != '' && inputs.push && inputs.builder == 'docker'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Образ
-        if: inputs.image != '' && inputs.push
+        if: inputs.image != '' && inputs.push && inputs.builder == 'docker'
         uses: docker/build-push-action@v6
         with:
           context: ${{ inputs.working-directory }}
@@ -139,3 +154,40 @@ jobs:
           build-args: JAVA=${{ env.JAVA_VERSION }}
           cache-from: type=gha,scope=${{ inputs.image }}
           cache-to: type=gha,mode=max,scope=${{ inputs.image }}
+
+      # Jib: образ без демона Docker, linux/amd64 (платформа Jib по умолчанию), тот же тег-sha. Плагин подключает
+      # скрипт инициализации — проекты Jib у себя не объявляют. Настройки и токен — через окружение, не -D: на
+      # своём раннере командную строку видят другие процессы.
+      - name: Образ (Jib)
+        if: inputs.image != '' && inputs.push && inputs.builder == 'jib'
+        working-directory: ${{ inputs.working-directory }}
+        env:
+          JIB_FROM: ${{ inputs.base-image }}
+          JIB_TO: ${{ inputs.image }}:${{ github.sha }}
+          JIB_USER: ${{ github.actor }}
+          JIB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JIB_JVM_FLAGS: ${{ inputs.jvm-flags }}
+        run: |
+          cat > "$RUNNER_TEMP/jib.init.gradle" <<'GRADLE'
+          initscript {
+              repositories { gradlePluginPortal() }
+              dependencies { classpath 'com.google.cloud.tools:jib-gradle-plugin:3.5.4' }
+          }
+          rootProject {
+              apply plugin: com.google.cloud.tools.jib.gradle.JibPlugin
+              def env = { String k -> def v = System.getenv(k); v == null || v.isBlank() ? null : v }
+              jib {
+                  from { image = env('JIB_FROM') }
+                  to {
+                      image = env('JIB_TO')
+                      auth { username = env('JIB_USER'); password = env('JIB_TOKEN') }
+                  }
+                  container {
+                      user = 'app'
+                      workingDirectory = '/opt/app'
+                      if (env('JIB_JVM_FLAGS')) jvmFlags = env('JIB_JVM_FLAGS').split(',').collect { it.trim() }
+                  }
+              }
+          }
+          GRADLE
+          ./gradlew --no-daemon jib --init-script "$RUNNER_TEMP/jib.init.gradle"
