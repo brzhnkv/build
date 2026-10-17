@@ -11,7 +11,7 @@
 | Плагин `dev.brzhnkv.service` | `plugins/` | Spring Boot сервис: Java, BOM, тесты, исполняемый jar, воспроизводимые архивы |
 | Плагин `dev.brzhnkv.keycloak-extension` | `plugins/` | расширение Keycloak: сборка JDK проекта, байткод под Java Keycloak |
 | `java-build.yml` | `.github/workflows/` | тесты и образ в ghcr (общий Dockerfile внутри) |
-| `compose-deploy.yml` | `.github/workflows/` | деплой на VPS: compose, ожидание healthy, проверка Flyway |
+| `compose-deploy.yml` | `.github/workflows/` | деплой на VPS через шлюз ключей деплоя (infra `ops/deploy`): compose в приёмный каталог, `deploy <сервис>=<sha>` |
 
 Плагины и BOM раздаются как Maven-репозиторий с GitHub Pages: `https://brzhnkv.github.io/build/maven`
 (без токенов). Версия базы — тег `vX.Y.Z`; плагины, BOM и workflow одной версии.
@@ -64,8 +64,8 @@ jobs:
   deploy:
     needs: build
     if: github.event_name != 'pull_request'
-    uses: brzhnkv/build/.github/workflows/compose-deploy.yml@v1.0.0
-    with: { image: ghcr.io/brzhnkv/notify, service: notify, server-dir: /opt/notify }
+    uses: brzhnkv/build/.github/workflows/compose-deploy.yml@v1.5.0
+    with: { service: notify }   # каталог, образ, контейнер — в infra ops/deploy/projects.yaml
     secrets: inherit
 ```
 
