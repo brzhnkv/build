@@ -84,7 +84,7 @@ jobs:
 
       - name: Отчёт о тестах при падении
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-report
           path: ${{ inputs.working-directory }}/build/reports/tests/
