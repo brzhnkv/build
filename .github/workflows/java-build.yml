@@ -85,7 +85,7 @@ jobs:
             ${{ inputs.working-directory }}/**/gradle-wrapper.properties
 
       - if: inputs.node-version != ''
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ inputs.node-version }}
 
