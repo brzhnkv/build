@@ -145,7 +145,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Образ
         if: inputs.image != '' && inputs.push && inputs.builder == 'docker'
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ inputs.working-directory }}
           file: ${{ env.DOCKERFILE_PATH }}
