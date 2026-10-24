@@ -7,8 +7,8 @@ java = "25"
 keycloak-java = "21"
 spring-boot = "4.1.1"
 dependency-management = "1.1.7"
-spring-ai = "2.0.0"
-sentry = "8.59.0"
+spring-ai = "2.0.1"
+sentry = "8.61.0"
 
 [libraries]
 spring-boot-gradle-plugin = { module = "org.springframework.boot:spring-boot-gradle-plugin", version.ref = "spring-boot" }
