@@ -1,0 +1,108 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "dev.brzhnkv",
+    "module": "platform",
+    "version": "1.6.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.8.2"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "platform",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-dependencies",
+          "version": {
+            "requires": "4.1.1"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          }
+        },
+        {
+          "group": "org.springframework.ai",
+          "module": "spring-ai-bom",
+          "version": {
+            "requires": "2.0.1"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          }
+        }
+      ],
+      "dependencyConstraints": [
+        {
+          "group": "io.sentry",
+          "module": "sentry",
+          "version": {
+            "requires": "8.61.0"
+          }
+        },
+        {
+          "group": "com.networknt",
+          "module": "json-schema-validator",
+          "version": {
+            "requires": "3.0.8"
+          }
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "platform",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-dependencies",
+          "version": {
+            "requires": "4.1.1"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          }
+        },
+        {
+          "group": "org.springframework.ai",
+          "module": "spring-ai-bom",
+          "version": {
+            "requires": "2.0.1"
+          },
+          "attributes": {
+            "org.gradle.category": "platform"
+          }
+        }
+      ],
+      "dependencyConstraints": [
+        {
+          "group": "io.sentry",
+          "module": "sentry",
+          "version": {
+            "requires": "8.61.0"
+          }
+        },
+        {
+          "group": "com.networknt",
+          "module": "json-schema-validator",
+          "version": {
+            "requires": "3.0.8"
+          }
+        }
+      ]
+    }
+  ]
+}
