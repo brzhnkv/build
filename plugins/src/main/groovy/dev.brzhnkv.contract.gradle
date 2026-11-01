@@ -1,0 +1,50 @@
+// Контракт API (Orchestrator docs/CONTRACT_DESIGN.md): источник правды — описание OpenAPI 3.1, сервер реализует
+// сгенерированные из него интерфейсы ручек — расхождение с описанием не компилируется.
+// Применяется вместе с dev.brzhnkv.service. В проекте остаётся своё: пакеты и отображения типов, например
+//   openApiGenerate {
+//       apiPackage = 'com.example.api'; modelPackage = 'com.example.api.model'
+//       configOptions.put('configPackage', 'com.example.api.config')
+//       schemaMappings = [JobType: 'com.example.JobType']   // открытые перечисления anyOf [KnownX, string]
+//   }
+// Описание по умолчанию — собранное `../api/dist/openapi.yaml` от каталога сервиса; другое — свойство
+// `contract.spec` (gradle.properties).
+plugins {
+    id 'java'
+    id 'org.openapi.generator'
+}
+
+def spec = rootProject.file(findProperty('contract.spec') ?: '../api/dist/openapi.yaml')
+def out = layout.buildDirectory.dir('generated/contract')
+
+openApiGenerate {
+    generatorName = 'spring'
+    inputSpec = spec.path
+    outputDir = out.get().asFile.path
+    globalProperties = [apis: '', models: '', supportingFiles: 'EnumConverterConfiguration.java,ApiUtil.java']
+    configOptions = [
+            interfaceOnly                     : 'true',
+            skipDefaultInterface              : 'true',
+            useTags                           : 'true',
+            useSpringBoot4                    : 'true',
+            useJackson3                       : 'true',
+            useBeanValidation                 : 'true',
+            useSealed                         : 'true',
+            openApiNullable                   : 'false',
+            documentationProvider             : 'none',
+            hideGenerationTimestamp           : 'true',
+            generateJsonIncludeAnnotations    : 'false',
+            generateJsonSetterNullsAnnotations: 'false',
+            sourceFolder                      : 'src/main/java',
+    ]
+}
+
+tasks.named('openApiGenerate') { inputs.file(spec) }
+sourceSets.main.java.srcDir(out.map { it.dir('src/main/java') })
+tasks.named('compileJava') { dependsOn 'openApiGenerate' }
+
+dependencies {
+    // Ограничения описания (@Valid, @Min/@Max) в сгенерированных интерфейсах — проверка входа.
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // Сверка настоящих ответов со схемами описания (JSON Schema 2020-12 — диалект OpenAPI 3.1, Jackson 3).
+    testImplementation 'com.networknt:json-schema-validator'
+}

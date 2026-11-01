@@ -10,6 +10,7 @@
 | BOM `dev.brzhnkv:platform` | `platform/` | версии для проектов: весь Spring Boot + общие библиотеки |
 | Плагин `dev.brzhnkv.service` | `plugins/` | Spring Boot сервис: Java, BOM, тесты, исполняемый jar, воспроизводимые архивы |
 | Плагин `dev.brzhnkv.keycloak-extension` | `plugins/` | расширение Keycloak: сборка JDK проекта, байткод под Java Keycloak |
+| Плагин `dev.brzhnkv.contract` | `plugins/` | контракт API: интерфейсы ручек и модели из описания OpenAPI (`../api/dist/openapi.yaml`), проверка входа, валидатор схем в тестах — см. Orchestrator `docs/CONTRACT_DESIGN.md` |
 | `java-build.yml` | `.github/workflows/` | тесты и образ в ghcr (общий Dockerfile внутри) |
 | `compose-deploy.yml` | `.github/workflows/` | деплой на VPS через шлюз ключей деплоя (infra `ops/deploy`): `upload` compose в приёмный каталог, `deploy <сервис>=<sha>` |
 
