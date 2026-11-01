@@ -9,6 +9,10 @@ spring-boot = "4.1.1"
 dependency-management = "1.1.7"
 spring-ai = "2.0.1"
 sentry = "8.61.0"
+# Контракт API (Orchestrator docs/CONTRACT_DESIGN.md): генератор сервера из описания и валидатор схем в тестах —
+# общий стандарт сервисов (решение CONTRACT-1), хоть пока и в одном проекте.
+openapi-generator = "7.26.0"
+json-schema-validator = "3.0.8"
 
 [libraries]
 spring-boot-gradle-plugin = { module = "org.springframework.boot:spring-boot-gradle-plugin", version.ref = "spring-boot" }
@@ -16,3 +20,5 @@ dependency-management-plugin = { module = "io.spring.gradle:dependency-managemen
 spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-ai-bom = { module = "org.springframework.ai:spring-ai-bom", version.ref = "spring-ai" }
 sentry = { module = "io.sentry:sentry", version.ref = "sentry" }
+openapi-generator-gradle-plugin = { module = "org.openapitools:openapi-generator-gradle-plugin", version.ref = "openapi-generator" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
