@@ -55,6 +55,18 @@ on:
         description: Собрать и выложить образ (на PR обычно false)
         type: boolean
         default: true
+      gradle-tasks:
+        description: >-
+          Задачи Gradle шага «Тесты и сборка». По умолчанию «clean build»; без clean и с другим набором — когда проекту
+          нужна одна задача с общим кэшем сборки (Orchestrator LIGHT_CI_DESIGN, решение LCI-4)
+        type: string
+        default: 'clean build'
+      junit-artifact:
+        description: >-
+          Выкладывать JUnit XML (build/test-results) артефактом всегда, а не только при падении: замер времени классов и
+          выборки тестов по прогонам (Orchestrator LIGHT_CI_DESIGN L0)
+        type: boolean
+        default: false
       runs-on:
         description: >-
           На чём запускать — JSON: "ubuntu-latest" (GitHub) или ["self-hosted", "orchestrator"] (свой раннер
@@ -95,7 +107,7 @@ jobs:
 
       - name: Тесты и сборка
         working-directory: ${{ inputs.working-directory }}
-        run: ./gradlew --no-daemon clean build
+        run: ./gradlew --no-daemon ${{ inputs.gradle-tasks }}
 
       - name: Отчёт о тестах при падении
         if: failure()
@@ -103,6 +115,14 @@ jobs:
         with:
           name: test-report
           path: ${{ inputs.working-directory }}/build/reports/tests/
+          if-no-files-found: ignore
+
+      - name: JUnit XML прогона
+        if: always() && inputs.junit-artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: junit-xml
+          path: ${{ inputs.working-directory }}/build/test-results/**/*.xml
           if-no-files-found: ignore
 
       - name: Проверка после сборки
