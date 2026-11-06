@@ -5,13 +5,13 @@
 java = "25"
 # Keycloak (26.x) работает на Java 21: расширения компилируются под неё, хоть и собираются JDK 25.
 keycloak-java = "21"
-spring-boot = "4.1.1"
+spring-boot = "4.1.2"
 dependency-management = "1.1.7"
-spring-ai = "2.0.1"
-sentry = "8.61.0"
+spring-ai = "2.0.2"
+sentry = "8.62.0"
 # Контракт API (Orchestrator docs/CONTRACT_DESIGN.md): генератор сервера из описания и валидатор схем в тестах —
 # общий стандарт сервисов (решение CONTRACT-1), хоть пока и в одном проекте.
-openapi-generator = "7.26.0"
+openapi-generator = "7.27.0"
 json-schema-validator = "3.0.8"
 
 [libraries]
