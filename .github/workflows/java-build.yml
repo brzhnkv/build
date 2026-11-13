@@ -111,6 +111,9 @@ jobs:
 
       - name: Отчёт о тестах при падении
         if: failure()
+        # Квота хранилища Actions выбрана — «Artifact storage quota has been hit» (2026-11-13) краснил CI: отчёт вспомогательный,
+        # его потеря не делает код красным.
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: test-report
@@ -121,6 +124,9 @@ jobs:
 
       - name: JUnit XML прогона
         if: always() && inputs.junit-artifact
+        # Квота хранилища Actions выбрана — «Artifact storage quota has been hit» (2026-11-13) краснил CI: отчёт вспомогательный,
+        # его потеря не делает код красным.
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: junit-xml
