@@ -1,0 +1,83 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "dev.brzhnkv",
+    "module": "plugins",
+    "version": "1.7.2",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.8.2"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "plugins-1.7.2.jar",
+          "url": "plugins-1.7.2.jar",
+          "size": 45134,
+          "sha512": "df27e3e0d8ccd2521012d600c8758411c871aa943d12dd50facc6254e7b5290d95af14323b44d8d8a48a6caecb95cfe47c608956a1f7cbe94ab917699ed20fd2",
+          "sha256": "0d527ea03c7f52b027bf05def5acaf7c610116b580840a6c27d4fa00da495ec4",
+          "sha1": "7a42bda5156aa28fef1f3b568f104eee6f6eadf9",
+          "md5": "f51d333c5d4b965be19d065d9d0f4c16"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 25,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.springframework.boot",
+          "module": "spring-boot-gradle-plugin",
+          "version": {
+            "requires": "4.1.1"
+          }
+        },
+        {
+          "group": "io.spring.gradle",
+          "module": "dependency-management-plugin",
+          "version": {
+            "requires": "1.1.7"
+          }
+        },
+        {
+          "group": "org.openapitools",
+          "module": "openapi-generator-gradle-plugin",
+          "version": {
+            "requires": "7.26.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "plugins-1.7.2.jar",
+          "url": "plugins-1.7.2.jar",
+          "size": 45134,
+          "sha512": "df27e3e0d8ccd2521012d600c8758411c871aa943d12dd50facc6254e7b5290d95af14323b44d8d8a48a6caecb95cfe47c608956a1f7cbe94ab917699ed20fd2",
+          "sha256": "0d527ea03c7f52b027bf05def5acaf7c610116b580840a6c27d4fa00da495ec4",
+          "sha1": "7a42bda5156aa28fef1f3b568f104eee6f6eadf9",
+          "md5": "f51d333c5d4b965be19d065d9d0f4c16"
+        }
+      ]
+    }
+  ]
+}
