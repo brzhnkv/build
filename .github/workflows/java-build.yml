@@ -116,6 +116,8 @@ jobs:
           name: test-report
           path: ${{ inputs.working-directory }}/build/reports/tests/
           if-no-files-found: ignore
+          # Хранилище Actions аккаунта — 0,5 ГБ на всё (2026-11-13 выбрано): отчёт нужен для разбора свежего падения, не дольше недели.
+          retention-days: 7
 
       - name: JUnit XML прогона
         if: always() && inputs.junit-artifact
@@ -124,6 +126,8 @@ jobs:
           name: junit-xml
           path: ${{ inputs.working-directory }}/build/test-results/**/*.xml
           if-no-files-found: ignore
+          # Время классов читается по свежим прогонам; 90 дней по умолчанию выбирали квоту хранилища Actions.
+          retention-days: 7
 
       - name: Проверка после сборки
         if: inputs.post-check != ''
